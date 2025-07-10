@@ -21,7 +21,7 @@ data:
     active-defrag-cycle-max 75
     {{- if and .Values.auth.enabled (not (eq .Values.auth.password "")) }}
     masterauth {{ .Values.auth.password }}
-    user default on +@all -DEBUG ~* >{{ .Values.auth.password }}
+    requirepass {{ .Values.auth.password }}
     {{- end }}
 ---
 {{- if .Values.sentinel.enabled }}
@@ -45,6 +45,5 @@ data:
     sentinel resolve-hostnames yes
     {{- if and .Values.auth.enabled (not (eq .Values.auth.password "")) }}
     sentinel auth-pass {{ .Values.sentinel.master }} {{ .Values.auth.password }}
-    sentinel auth-user {{ .Values.sentinel.master }} default
     {{- end }}
 {{- end }}
