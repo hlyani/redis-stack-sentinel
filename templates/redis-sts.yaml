@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "redis.fullname" . }}-redis
+spec:
+  serviceName: {{ include "redis.fullname" . }}-redis-headless
+  replicas: {{ .Values.redis.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "redis.fullname" . }}-redis
+  template:
+    metadata:
+      labels:
+        app: {{ include "redis.fullname" . }}-redis
+    spec:
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ include "redis.fullname" . }}-redis
+          image: {{ .Values.repository }}{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.redis.service.port }}
+          volumeMounts:
+            - name: config
+              mountPath: /tmp
+          command: ["bash" ,"-c"]
+          args:
+            - |
+              cp /tmp/redis-stack.conf /redis-stack.conf
+              if [[ "$(hostname)" != *-0 ]]; then
+                echo "replicaof {{ include "redis.fullname" . }}-redis-0.{{ include "redis.fullname" . }}-redis-headless {{ .Values.redis.service.port }}" >> /redis-stack.conf
+              fi
+              /entrypoint.sh
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "redis.fullname" . }}-redis-config

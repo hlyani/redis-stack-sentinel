@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "redis.fullname" . }}-redis-headless
+  labels:
+    app: {{ include "redis.fullname" . }}-redis
+spec:
+  ports:
+    - port: {{ .Values.redis.service.port }}
+      name: {{ include "redis.fullname" . }}-redis
+  clusterIP: None
+  selector:
+    app: {{ include "redis.fullname" . }}-redis
+---
+{{- if .Values.sentinel.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "redis.fullname" . }}-sentinel-headless
+  labels:
+    app: {{ include "redis.fullname" . }}-sentinel
+spec:
+  ports:
+    - port: {{ .Values.sentinel.service.port }}
+      name: sentinel
+  clusterIP: None
+  selector:
+    app: {{ include "redis.fullname" . }}-sentinel
+{{- end }}

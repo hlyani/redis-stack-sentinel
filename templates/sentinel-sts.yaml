@@ -1,0 +1,63 @@
+{{- if .Values.sentinel.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "redis.fullname" . }}-sentinel
+spec:
+  serviceName: {{ include "redis.fullname" . }}-sentinel-headless
+  replicas: {{ .Values.sentinel.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "redis.fullname" . }}-sentinel
+  template:
+    metadata:
+      labels:
+        app: {{ include "redis.fullname" . }}-sentinel
+    spec:
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-redis
+          image: {{ .Values.repository }}{{ .Values.sentinel.image.repository }}:{{ .Values.sentinel.image.tag }}
+          env:
+            {{- if .Values.auth.enabled }}
+            - name: REDISCLI_AUTH
+              value: {{ .Values.auth.password | quote }}
+            {{- end }}
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for {{ include "redis.fullname" . }}-redis-0 to be ready..."
+              for i in $(seq 1 600); do
+                echo "redis-cli -h {{ include "redis.fullname" . }}-redis-0.{{ include "redis.fullname" . }}-redis-headless.{{ .Release.Namespace }}.svc.cluster.local -p {{ .Values.redis.service.port }} ping"
+                redis-cli -h {{ include "redis.fullname" . }}-redis-0.{{ include "redis.fullname" . }}-redis-headless.{{ .Release.Namespace }}.svc.cluster.local -p {{ .Values.redis.service.port }} ping | grep PONG && exit 0
+                echo "[$i] Redis not ready yet, sleeping..."
+                sleep 3
+              done
+              echo "[ERROR] Redis master did not become ready in time"
+              exit 1
+      containers:
+        - name: sentinel
+          image: {{ .Values.repository }}{{ .Values.sentinel.image.repository }}:{{ .Values.sentinel.image.tag }}
+          imagePullPolicy: {{ .Values.sentinel.image.pullPolicy }}
+          command: ["bash" ,"-c"]
+          args:
+            - |
+              mkdir -p /etc/redis && \
+              cp /tmp/sentinel.conf /etc/redis/sentinel.conf && \
+              redis-sentinel /etc/redis/sentinel.conf
+          ports:
+            - containerPort: {{ .Values.sentinel.service.port }}
+          volumeMounts:
+            - name: config
+              mountPath: /tmp/
+          resources:
+            {{- toYaml .Values.sentinel.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "redis.fullname" . }}-sentinel-config
+{{- end }}

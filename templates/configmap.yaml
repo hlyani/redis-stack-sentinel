@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "redis.fullname" . }}-redis-config
+  labels:
+    app: {{ include "redis.fullname" . }}-redis
+data:
+  redis-stack.conf: |
+    port {{ .Values.redis.service.port }}
+    bind 0.0.0.0
+    protected-mode no
+    appendonly yes
+    maxclients 10000
+    tcp-keepalive 60
+    maxmemory 6gb
+    maxmemory-policy allkeys-lru
+    activedefrag yes
+    active-defrag-threshold-lower 10
+    active-defrag-threshold-upper 100
+    active-defrag-cycle-min 25
+    active-defrag-cycle-max 75
+    {{- if and .Values.auth.enabled (not (eq .Values.auth.password "")) }}
+    masterauth {{ .Values.auth.password }}
+    user default on +@all -DEBUG ~* >{{ .Values.auth.password }}
+    {{- end }}
+---
+{{- if .Values.sentinel.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata: 
+  name: {{ include "redis.fullname" . }}-sentinel-config
+  labels:
+    app: {{ include "redis.fullname" . }}-sentinel
+data:
+  sentinel.conf: |
+    port {{ .Values.sentinel.service.port }}
+    bind 0.0.0.0
+    protected-mode no
+    dir /tmp
+    sentinel monitor {{ .Values.sentinel.master }} {{ include "redis.fullname" . }}-redis-0.{{ include "redis.fullname" . }}-redis-headless.{{ .Release.Namespace }}.svc.cluster.local {{ .Values.redis.service.port }} 2
+    sentinel down-after-milliseconds {{ .Values.sentinel.master }} 6000
+    sentinel failover-timeout {{ .Values.sentinel.master }} 10000
+    sentinel parallel-syncs {{ .Values.sentinel.master }} 1
+    sentinel deny-scripts-reconfig yes
+    sentinel resolve-hostnames yes
+    {{- if and .Values.auth.enabled (not (eq .Values.auth.password "")) }}
+    sentinel auth-pass {{ .Values.sentinel.master }} {{ .Values.auth.password }}
+    sentinel auth-user {{ .Values.sentinel.master }} default
+    {{- end }}
+{{- end }}
