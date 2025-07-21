@@ -9,16 +9,25 @@ data:
     port {{ .Values.redis.service.port }}
     bind 0.0.0.0
     protected-mode no
+    dir /tmp
     appendonly yes
+    appendfsync no
+    no-appendfsync-on-rewrite yes
     maxclients 10000
     tcp-keepalive 60
-    maxmemory 6gb
+    tcp-backlog 10240
+    timeout 300
+    hz 100
+    maxmemory 8gb
     maxmemory-policy allkeys-lru
     activedefrag yes
     active-defrag-threshold-lower 10
     active-defrag-threshold-upper 100
     active-defrag-cycle-min 25
     active-defrag-cycle-max 75
+    repl-backlog-size 128mb
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit pubsub 32mb 8mb 60
     {{- if and .Values.auth.enabled (not (eq .Values.auth.password "")) }}
     masterauth {{ .Values.auth.password }}
     requirepass {{ .Values.auth.password }}
@@ -38,12 +47,12 @@ data:
     protected-mode no
     dir /tmp
     sentinel monitor {{ .Values.sentinel.master }} {{ include "redis.fullname" . }}-redis-0.{{ include "redis.fullname" . }}-redis-headless.{{ .Release.Namespace }}.svc.cluster.local {{ .Values.redis.service.port }} 2
+    {{- if and .Values.auth.enabled (not (eq .Values.auth.password "")) }}
+    sentinel auth-pass {{ .Values.sentinel.master }} {{ .Values.auth.password }}
+    {{- end }}
     sentinel down-after-milliseconds {{ .Values.sentinel.master }} 6000
     sentinel failover-timeout {{ .Values.sentinel.master }} 10000
     sentinel parallel-syncs {{ .Values.sentinel.master }} 1
     sentinel deny-scripts-reconfig yes
     sentinel resolve-hostnames yes
-    {{- if and .Values.auth.enabled (not (eq .Values.auth.password "")) }}
-    sentinel auth-pass {{ .Values.sentinel.master }} {{ .Values.auth.password }}
-    {{- end }}
 {{- end }}

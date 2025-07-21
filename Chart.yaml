@@ -3,4 +3,4 @@ name: redis-stack-sentinel
 description: A Helm chart to deploy Redis Stack with Sentinel support for high availability.
 type: application
 version: 1.0.0
-appVersion: "7.4.0-v5"
+appVersion: 7.4.0-v5

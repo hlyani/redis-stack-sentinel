@@ -18,10 +18,10 @@ redis:
     port: 6379
   resources:
     requests:
-      cpu: 2
+      cpu: 8
       memory: 8Gi
     limits:
-      cpu: 2
+      cpu: 8
       memory: 8Gi
 
 sentinel:
@@ -34,11 +34,10 @@ sentinel:
     port: 26379
   master: mymaster
   quorum: 2
-  replicas: 3
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 1
+      memory: 512Mi
     limits:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 1
+      memory: 512Mi
